@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @Setter
-@ToString(exclude = "user")
+@ToString(exclude = {"user","parentNo"})
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -37,7 +37,7 @@ public class Storage {
     @JoinColumn(name = "parentno")
     private Storage parentNo;
 
-    @OneToMany(mappedBy = "parentNo")
+    @OneToMany(mappedBy = "parentNo", cascade = CascadeType.ALL)
     private List<Storage> child;
 
     @Column(name = "foldername")
