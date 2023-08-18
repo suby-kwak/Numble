@@ -23,7 +23,7 @@
     </c:forEach>
 </c:forEach>
 <c:forEach items="${user.root.files}" var="file">
-    <a href="#">${file.fileOriginName}</a>
+    <a href="/mybox/filedownload/${file.fileNo}">${file.fileOriginName}</a>
     <br>
 </c:forEach>
 

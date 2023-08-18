@@ -93,6 +93,16 @@ public class MyboxService {
 
 
     // 파일 다운로드
+    public UserFile findByNo(Long fileNo) {
+        Optional<UserFile> file = fileRepository.findById(fileNo);
+
+        if (file.isEmpty()) {
+            return null;
+        }
+
+        return file.orElseThrow();
+    }
+
 
     // 파일 업로드
     @Transactional
