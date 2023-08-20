@@ -3,6 +3,7 @@ package com.spring.mybox_mysql.controller;
 import com.spring.mybox_mysql.entity.User;
 import com.spring.mybox_mysql.entity.UserFile;
 import com.spring.mybox_mysql.service.MyboxService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -21,22 +22,59 @@ import java.nio.file.Paths;
 @Controller
 @RequestMapping("/mybox")
 public class MyboxController {
+
     @Autowired
     private MyboxService service;
 
     @GetMapping("/index")
-    public String index(Model model) {
-        User user = service.findById("rhkdbtj@naver.com").orElseThrow();
-
-        model.addAttribute("user", user);
+    public String index(Model model,HttpSession session) {
+        Object userId = session.getAttribute("userId");
+        if(userId != null) {
+            User user = service.findById(userId.toString()).orElseThrow();
+            model.addAttribute("user", user);
+        }
 
         return "index";
     }
 
+    //회원가입
+    @PostMapping("/signup")
+    public String signup(@RequestParam("userID") String userId,
+                         @RequestParam("password") String password,
+                         @RequestParam("userName") String userName) {
+
+        service.saveUser(userId, userName, password);
+
+        return "redirect:/mybox/index";
+    }
+
+    @PostMapping("/login")
+    public String login(@RequestParam("userID") String userId,
+                        @RequestParam("password") String password,
+                        HttpSession session) {
+
+        User user = service.findById(userId).orElseThrow();
+
+        if (user.getPassword().equals(password)) {
+            session.setAttribute("userId",userId);
+            session.setAttribute("userName",user.getUserName());
+        }
+
+        return "redirect:/mybox/index";
+    }
+
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        session.invalidate();
+
+        return "redirect:/mybox/index";
+    }
+
     @PostMapping("/filesave")
-    public String fileSave(@RequestParam("file") MultipartFile file) {
+    public String fileSave(@RequestParam("file") MultipartFile file, HttpSession session) {
+
         try {
-            service.saveFile(file);
+            service.saveFile(file, session.getAttribute("userId").toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -62,4 +100,5 @@ public class MyboxController {
 
         return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
     }
+
 }

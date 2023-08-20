@@ -33,7 +33,7 @@ public class MyboxService {
     }
 
     // 유저 생성
-    public User saveUser(String userId, String name, String password) {
+    public void saveUser(String userId, String name, String password) {
         if(userRepository.findById(userId).isEmpty()) {
             User user = User.builder()
                     .userId(userId)
@@ -47,11 +47,10 @@ public class MyboxService {
                     .folderName("root")
                     .build();
 
-            storageRepository.save(storage);
+            userRepository.save(user);
 
-            return userRepository.save(user);
+            storageRepository.save(storage);
         }
-        return null;
     }
 
     // 유저 삭제
@@ -65,7 +64,7 @@ public class MyboxService {
     }
 
     // 하위 폴더 생성
-    public Storage saveChild(String userId, Long parentNo, String folderName) {
+    public void saveChild(String userId, Long parentNo, String folderName) {
         if(!storageRepository.findById(parentNo).orElseThrow().getFolderName().equals(folderName)) {
             User user = new User();
             user.setUserId(userId);
@@ -79,9 +78,8 @@ public class MyboxService {
                     .folderName(folderName)
                     .build();
 
-            return storageRepository.save(storage);
+            storageRepository.save(storage);
         }
-        return null;
     }
 
     // 폴더 삭제
@@ -106,11 +104,15 @@ public class MyboxService {
 
     // 파일 업로드
     @Transactional
-    public UserFile saveFile(MultipartFile file) throws IOException {
-        String path = "D:/test/";
+    public UserFile saveFile(MultipartFile file, String userId) throws IOException {
+        String path = "E:/test/";
         String fileName = UUID.randomUUID().toString();
+        long storageSize = userRepository.findById(userId).orElseThrow().getStorageSize();
 
-        Optional<Storage> storage = findByUserAndFolderName("rhkdbtj@naver.com", "root");
+
+        userRepository.updateStorage(userId, storageSize - file.getSize());
+
+        Optional<Storage> storage = findByUserAndFolderName(userId, "root");
 
         if(!file.isEmpty() && !storage.isEmpty()) {
             UserFile userFile = UserFile.builder()
