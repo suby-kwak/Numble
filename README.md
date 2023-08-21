@@ -9,6 +9,8 @@ Naver Mybox 서비스 클론 코딩
 <br><br>
 
 ##  💻 개발환경
+**IDLE : Intellij IDEA 2023.1**
+
 **Java : ver. 17**
 
 **Spring Boot : ver. 3.1.2**
