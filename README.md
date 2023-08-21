@@ -36,3 +36,6 @@ Naver Mybox 서비스 클론 코딩
 
 ## 📝 ERD
 ![erd](https://github.com/suby-kwak/Numble/assets/78299214/b2d323c5-12f6-4197-87ac-a2bfc65faf54)
+
+## 회고록
+[회고록](https://velog.io/@rhkdbtj/%ED%9B%84%EA%B8%B0-Numble-%EB%94%A5%EB%8B%A4%EC%9D%B4%EB%B8%8C-MyBOX-%EC%84%9C%EB%B2%84-%EB%A7%8C%EB%93%A4%EA%B8%B0-%ED%9A%8C%EA%B3%A0%EB%A1%9D)
