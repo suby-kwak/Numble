@@ -16,16 +16,10 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "storage")
-@SequenceGenerator(
-        name = "storage_seq_gen",
-        sequenceName = "storage_seq",
-        initialValue = 1,
-        allocationSize = 1
-)
 @EntityListeners(AuditingEntityListener.class)
 public class Storage {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "storage_seq_gen")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "storageno")
     private Long storageNo;
 

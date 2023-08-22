@@ -15,16 +15,10 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "userfile")
-@SequenceGenerator(
-        name = "file_seq_gen",
-        sequenceName = "file_seq",
-        initialValue = 1,
-        allocationSize = 1
-)
 @EntityListeners(AuditingEntityListener.class)
 public class UserFile {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "file_seq_gen")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "fileno")
     private Long fileNo;
 

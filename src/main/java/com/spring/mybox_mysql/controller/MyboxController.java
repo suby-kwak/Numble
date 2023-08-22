@@ -83,22 +83,7 @@ public class MyboxController {
 
     @GetMapping("/filedownload/{fileNo}")
     public ResponseEntity<Resource> fileDownload(@PathVariable("fileNo") Long fileNo) {
-        Resource resource = null;
-        HttpHeaders headers = null;
-        try {
-            UserFile file = service.findByNo(fileNo);
-            Path path = Paths.get(file.getPath());
-            resource = new InputStreamResource(Files.newInputStream(path));
-
-            headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDisposition(ContentDisposition.builder("attachment")
-                                            .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
+        return service.fileDownload(fileNo);
     }
 
 }

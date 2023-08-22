@@ -6,27 +6,32 @@ import com.spring.mybox_mysql.entity.UserFile;
 import com.spring.mybox_mysql.repository.StorageRepository;
 import com.spring.mybox_mysql.repository.UserFileRepository;
 import com.spring.mybox_mysql.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class MyboxService {
 
-    @Autowired
-    private StorageRepository storageRepository;
+    private final StorageRepository storageRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserFileRepository fileRepository;
+    private final UserFileRepository fileRepository;
 
     public Optional<User> findById(String id) {
         return userRepository.findById(id);
@@ -91,14 +96,23 @@ public class MyboxService {
 
 
     // 파일 다운로드
-    public UserFile findByNo(Long fileNo) {
-        Optional<UserFile> file = fileRepository.findById(fileNo);
+    public ResponseEntity<Resource> fileDownload(Long fileNo) {
+        Resource resource = null;
+        HttpHeaders headers = null;
+        try {
+            UserFile file = fileRepository.findById(fileNo).orElseThrow();
+            Path path = Paths.get(file.getPath());
+            resource = new InputStreamResource(Files.newInputStream(path));
 
-        if (file.isEmpty()) {
-            return null;
+            headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDisposition(ContentDisposition.builder("attachment")
+                    .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
-        return file.orElseThrow();
+        return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
     }
 
 
