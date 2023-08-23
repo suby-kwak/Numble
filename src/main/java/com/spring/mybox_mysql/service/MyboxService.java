@@ -1,11 +1,16 @@
 package com.spring.mybox_mysql.service;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.services.s3.transfer.Download;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.util.IOUtils;
+import com.spring.mybox_mysql.config.XferMgrProgress;
 import com.spring.mybox_mysql.entity.Storage;
 import com.spring.mybox_mysql.entity.User;
 import com.spring.mybox_mysql.entity.UserFile;
@@ -20,11 +25,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.transfer.s3.S3TransferManager;
-import software.amazon.awssdk.transfer.s3.model.CompletedFileDownload;
-import software.amazon.awssdk.transfer.s3.model.DownloadFileRequest;
-import software.amazon.awssdk.transfer.s3.model.FileDownload;
-import software.amazon.awssdk.transfer.s3.progress.LoggingTransferListener;
 
 import java.io.File;
 import java.io.IOException;
@@ -134,34 +134,35 @@ public class MyboxService {
 
 
     // 파일 업로드
-    @Transactional
-    public UserFile saveFile(MultipartFile file, String userId) throws IOException {
-        String path = "E:/test/";
-        String fileName = UUID.randomUUID().toString();
-        long storageSize = userRepository.findById(userId).orElseThrow().getStorageSize();
+//    @Transactional
+//    public UserFile saveFile(MultipartFile file, String userId) throws IOException {
+//        String path = "E:/test/";
+//        String fileName = UUID.randomUUID().toString();
+//        long storageSize = userRepository.findById(userId).orElseThrow().getStorageSize();
+//
+//
+//        userRepository.updateStorage(userId, storageSize - file.getSize());
+//
+//        Optional<Storage> storage = findByUserAndFolderName(userId, "root");
+//
+//        if(!file.isEmpty() && !storage.isEmpty()) {
+//            UserFile userFile = UserFile.builder()
+//                    .storageNo(storage.orElseThrow())
+//                    .fileName(fileName)
+//                    .fileOriginName(file.getOriginalFilename())
+//                    .filesize(file.getSize())
+//                    .contentType(file.getContentType())
+//                    .path(path + fileName).build();
+//
+//            file.transferTo(new File(userFile.getPath()));
+//
+//            return fileRepository.save(userFile);
+//        }
+//
+//        return null;
+//    }
 
-
-        userRepository.updateStorage(userId, storageSize - file.getSize());
-
-        Optional<Storage> storage = findByUserAndFolderName(userId, "root");
-
-        if(!file.isEmpty() && !storage.isEmpty()) {
-            UserFile userFile = UserFile.builder()
-                    .storageNo(storage.orElseThrow())
-                    .fileName(fileName)
-                    .fileOriginName(file.getOriginalFilename())
-                    .filesize(file.getSize())
-                    .contentType(file.getContentType())
-                    .path(path + fileName).build();
-
-            file.transferTo(new File(userFile.getPath()));
-
-            return fileRepository.save(userFile);
-        }
-
-        return null;
-    }
-
+    // Object Storage 파일 업로드
     @Transactional
     public UserFile uploadfile(MultipartFile file, String userId) throws IOException {
         String fileName = UUID.randomUUID().toString();
@@ -193,7 +194,7 @@ public class MyboxService {
         return null;
     }
 
-    // 파일 다운로드
+    // Object Storage 파일 다운로드(trouble shooting : java.lang.outofmemoryerror: java heap space)
     public ResponseEntity<byte[]> downloadFile(Long fileNo) {
         byte[] bytes = null;
         HttpHeaders headers = null;
@@ -215,21 +216,24 @@ public class MyboxService {
     }
 
     // 대용량 파일 다운로드
-    public Long downloadFile(S3TransferManager transferManager,
-                             Long fileNo, String downloadedFileWithPath) {
+    public void download(Long fileNo) {
+
         UserFile file = fileRepository.findById(fileNo).orElseThrow();
 
-        DownloadFileRequest downloadFileRequest =
-                DownloadFileRequest.builder()
-                        .getObjectRequest(b -> b.bucket(bucketName).key(file.getFileName()))
-                        .addTransferListener(LoggingTransferListener.create())
-                        .destination(Paths.get(file.getPath()))
-                        .build();
-
-        FileDownload downloadFile = transferManager.downloadFile(downloadFileRequest);
-
-        CompletedFileDownload downloadResult = downloadFile.completionFuture().join();
-        return downloadResult.response().contentLength();
+        File f = new File(file.getFileOriginName());
+        TransferManager xfer_mgr = TransferManagerBuilder.standard()
+                .withS3Client(amazonS3Client).build();
+        try {
+            Download xfer = xfer_mgr.download(bucketName, file.getFileName(), f);
+            // loop with Transfer.isDone()
+            XferMgrProgress.showTransferProgress(xfer);
+            // or block with Transfer.waitForCompletion()
+            XferMgrProgress.waitForCompletion(xfer);
+        } catch (AmazonServiceException e) {
+            System.err.println(e.getErrorMessage());
+            System.exit(1);
+        }
+        xfer_mgr.shutdownNow();
     }
     // 파일 삭제
 }

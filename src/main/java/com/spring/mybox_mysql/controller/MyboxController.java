@@ -76,9 +76,15 @@ public class MyboxController {
         return "redirect:/mybox/index";
     }
 
+//    @GetMapping("/filedownload/{fileNo}")
+//    public ResponseEntity<byte[]> fileDownload(@PathVariable("fileNo") Long fileNo) {
+//        return service.downloadFile(fileNo);
+//    }
+
     @GetMapping("/filedownload/{fileNo}")
-    public ResponseEntity<byte[]> fileDownload(@PathVariable("fileNo") Long fileNo) {
-        return service.downloadFile(fileNo);
+    public String fileDownload(@PathVariable("fileNo") Long fileNo) {
+        service.download(fileNo);
+        return "redirect:/mybox/index";
     }
 
 }
