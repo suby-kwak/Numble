@@ -1,18 +1,30 @@
 package com.spring.mybox_mysql.service;
 
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.util.IOUtils;
 import com.spring.mybox_mysql.entity.Storage;
 import com.spring.mybox_mysql.entity.User;
 import com.spring.mybox_mysql.entity.UserFile;
 import com.spring.mybox_mysql.repository.StorageRepository;
 import com.spring.mybox_mysql.repository.UserFileRepository;
 import com.spring.mybox_mysql.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.CompletedFileDownload;
+import software.amazon.awssdk.transfer.s3.model.DownloadFileRequest;
+import software.amazon.awssdk.transfer.s3.model.FileDownload;
+import software.amazon.awssdk.transfer.s3.progress.LoggingTransferListener;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +44,11 @@ public class MyboxService {
     private final UserRepository userRepository;
 
     private final UserFileRepository fileRepository;
+
+    private final AmazonS3Client amazonS3Client;
+
+    @Value("${cloud.aws.credentials.bucket}")
+    private String bucketName;
 
     public Optional<User> findById(String id) {
         return userRepository.findById(id);
@@ -145,5 +162,74 @@ public class MyboxService {
         return null;
     }
 
+    @Transactional
+    public UserFile uploadfile(MultipartFile file, String userId) throws IOException {
+        String fileName = UUID.randomUUID().toString();
+        long storageSize = userRepository.findById(userId).orElseThrow().getStorageSize();
+
+        userRepository.updateStorage(userId, storageSize - file.getSize());
+
+        Optional<Storage> storage = findByUserAndFolderName(userId, "root");
+
+        if(!file.isEmpty() && !storage.isEmpty()) {
+
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
+
+            amazonS3Client.putObject(bucketName, fileName, file.getInputStream(), metadata);
+
+            UserFile userFile = UserFile.builder()
+                    .storageNo(storage.orElseThrow())
+                    .fileName(fileName)
+                    .fileOriginName(file.getOriginalFilename())
+                    .filesize(file.getSize())
+                    .contentType(file.getContentType())
+                    .path(amazonS3Client.getUrl(bucketName, fileName).toString()).build();
+
+            return fileRepository.save(userFile);
+        }
+
+        return null;
+    }
+
+    // 파일 다운로드
+    public ResponseEntity<byte[]> downloadFile(Long fileNo) {
+        byte[] bytes = null;
+        HttpHeaders headers = null;
+        try {
+            UserFile file = fileRepository.findById(fileNo).orElseThrow();
+            S3Object s3Object = amazonS3Client.getObject(new GetObjectRequest(bucketName, file.getFileName()));
+            S3ObjectInputStream inputStream = s3Object.getObjectContent();
+            bytes = IOUtils.toByteArray(inputStream);
+
+            headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDisposition(ContentDisposition.builder("attachment")
+                    .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return new ResponseEntity<byte[]>(bytes, headers, HttpStatus.OK);
+    }
+
+    // 대용량 파일 다운로드
+    public Long downloadFile(S3TransferManager transferManager,
+                             Long fileNo, String downloadedFileWithPath) {
+        UserFile file = fileRepository.findById(fileNo).orElseThrow();
+
+        DownloadFileRequest downloadFileRequest =
+                DownloadFileRequest.builder()
+                        .getObjectRequest(b -> b.bucket(bucketName).key(file.getFileName()))
+                        .addTransferListener(LoggingTransferListener.create())
+                        .destination(Paths.get(file.getPath()))
+                        .build();
+
+        FileDownload downloadFile = transferManager.downloadFile(downloadFileRequest);
+
+        CompletedFileDownload downloadResult = downloadFile.completionFuture().join();
+        return downloadResult.response().contentLength();
+    }
     // 파일 삭제
 }

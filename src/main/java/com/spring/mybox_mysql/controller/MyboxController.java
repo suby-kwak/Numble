@@ -1,11 +1,9 @@
 package com.spring.mybox_mysql.controller;
 
 import com.spring.mybox_mysql.entity.User;
-import com.spring.mybox_mysql.entity.UserFile;
 import com.spring.mybox_mysql.service.MyboxService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
@@ -14,10 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+
 
 @Controller
 @RequestMapping("/mybox")
@@ -74,7 +69,7 @@ public class MyboxController {
     public String fileSave(@RequestParam("file") MultipartFile file, HttpSession session) {
 
         try {
-            service.saveFile(file, session.getAttribute("userId").toString());
+            service.uploadfile(file, session.getAttribute("userId").toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -82,8 +77,8 @@ public class MyboxController {
     }
 
     @GetMapping("/filedownload/{fileNo}")
-    public ResponseEntity<Resource> fileDownload(@PathVariable("fileNo") Long fileNo) {
-        return service.fileDownload(fileNo);
+    public ResponseEntity<byte[]> fileDownload(@PathVariable("fileNo") Long fileNo) {
+        return service.downloadFile(fileNo);
     }
 
 }
