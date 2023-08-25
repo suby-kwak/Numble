@@ -82,9 +82,14 @@ public class MyboxController {
 //    }
 
     @GetMapping("/filedownload/{fileNo}")
-    public String fileDownload(@PathVariable("fileNo") Long fileNo) {
-        service.download(fileNo);
-        return "redirect:/mybox/index";
+    public ResponseEntity<Resource> fileDownload2(@PathVariable("fileNo") Long fileNo) throws IOException, InterruptedException {
+        return service.download2(fileNo);
     }
+
+//    @GetMapping("/filedownload/{fileNo}")
+//    public String fileDownload(@PathVariable("fileNo") Long fileNo) {
+//        service.download(fileNo);
+//        return "redirect:/mybox/index";
+//    }
 
 }

@@ -3,8 +3,11 @@ package com.spring.mybox_mysql.config;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,13 +27,21 @@ public class NcpConfig {
     private String endPoint;
 
     @Bean
-    public AmazonS3Client amazonS3Client() {
+    public AmazonS3 amazonS3() {
         BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 
-        return (AmazonS3Client) AmazonS3ClientBuilder
+        return AmazonS3ClientBuilder
                 .standard()
                 .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endPoint, region))
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
                 .build();
+    }
+
+    @Bean
+    public TransferManager transferManager() {
+        TransferManager transferManager = TransferManagerBuilder.standard()
+                .withS3Client(amazonS3())
+                .build();
+        return transferManager;
     }
 }
