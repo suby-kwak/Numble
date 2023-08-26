@@ -2,7 +2,6 @@ package com.spring.mybox_mysql.service;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.transfer.*;
 import com.spring.mybox_mysql.config.FileUtil;
@@ -16,7 +15,6 @@ import com.spring.mybox_mysql.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
@@ -135,35 +133,6 @@ public class MyboxService {
     }
 
 
-    // 파일 업로드
-//    @Transactional
-//    public UserFile saveFile(MultipartFile file, String userId) throws IOException {
-//        String path = "E:/test/";
-//        String fileName = UUID.randomUUID().toString();
-//        long storageSize = userRepository.findById(userId).orElseThrow().getStorageSize();
-//
-//
-//        userRepository.updateStorage(userId, storageSize - file.getSize());
-//
-//        Optional<Storage> storage = findByUserAndFolderName(userId, "root");
-//
-//        if(!file.isEmpty() && !storage.isEmpty()) {
-//            UserFile userFile = UserFile.builder()
-//                    .storageNo(storage.orElseThrow())
-//                    .fileName(fileName)
-//                    .fileOriginName(file.getOriginalFilename())
-//                    .filesize(file.getSize())
-//                    .contentType(file.getContentType())
-//                    .path(path + fileName).build();
-//
-//            file.transferTo(new File(userFile.getPath()));
-//
-//            return fileRepository.save(userFile);
-//        }
-//
-//        return null;
-//    }
-
     // Object Storage 파일 업로드
     @Transactional
     public UserFile uploadfile(MultipartFile file, String userId) throws IOException {
@@ -202,7 +171,7 @@ public class MyboxService {
 //        HttpHeaders headers = null;
 //        try {
 //            UserFile file = fileRepository.findById(fileNo).orElseThrow();
-//            S3Object s3Object = amazonS3Client.getObject(new GetObjectRequest(bucketName, file.getFileName()));
+//            S3Object s3Object = amazonS3.getObject(new GetObjectRequest(bucketName, file.getFileName()));
 //            S3ObjectInputStream inputStream = s3Object.getObjectContent();
 //            bytes = IOUtils.toByteArray(inputStream);
 //
@@ -224,11 +193,8 @@ public class MyboxService {
         File file = new File(userFile.getFileOriginName());
         Path path = Paths.get(file.getPath());
         try {
-            // (2)
-            // TransferManager -> localDirectory에 파일 다운로드
             Download downloadDirectory = transferManager.download(bucketName, userFile.getFileName(), file);
 
-            // (3)
             // 다운로드 상태 확인
             log.info("[" + userFile.getFileOriginName() + "] download progressing... start");
             DecimalFormat decimalFormat = new DecimalFormat("##0.00");
@@ -239,14 +205,13 @@ public class MyboxService {
                 log.info("[" + userFile.getFileOriginName() + "] " + decimalFormat.format(percentTransferred) + "% download progressing...");
             }
             log.info("[" + userFile.getFileOriginName() + "] download directory from S3 success!");
+
             resource = new InputStreamResource(Files.newInputStream(path));
             headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDisposition(ContentDisposition.builder("attachment")
                     .filename(URLEncoder.encode(userFile.getFileOriginName(),"UTF-8")).build());
         } finally {
-            // (5)
-            // 로컬 디렉토리 삭제
             FileUtil.remove(file);
         }
 
@@ -255,7 +220,6 @@ public class MyboxService {
 
     // 대용량 파일 다운로드(프로젝트에 저장)
     public void download(Long fileNo) {
-
         UserFile file = fileRepository.findById(fileNo).orElseThrow();
 
         File f = new File(file.getFileOriginName());
