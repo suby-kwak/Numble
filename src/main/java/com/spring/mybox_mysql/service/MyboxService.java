@@ -2,8 +2,12 @@ package com.spring.mybox_mysql.service;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.transfer.*;
+import com.amazonaws.util.IOUtils;
 import com.spring.mybox_mysql.config.FileUtil;
 import com.spring.mybox_mysql.config.XferMgrProgress;
 import com.spring.mybox_mysql.entity.Storage;
@@ -165,26 +169,26 @@ public class MyboxService {
         return null;
     }
 
-    // Object Storage 파일 다운로드(trouble shooting : java.lang.outofmemoryerror: java heap space)
-//    public ResponseEntity<byte[]> downloadFile(Long fileNo) {
-//        byte[] bytes = null;
-//        HttpHeaders headers = null;
-//        try {
-//            UserFile file = fileRepository.findById(fileNo).orElseThrow();
-//            S3Object s3Object = amazonS3.getObject(new GetObjectRequest(bucketName, file.getFileName()));
-//            S3ObjectInputStream inputStream = s3Object.getObjectContent();
-//            bytes = IOUtils.toByteArray(inputStream);
-//
-//            headers = new HttpHeaders();
-//            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-//            headers.setContentDisposition(ContentDisposition.builder("attachment")
-//                    .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        return new ResponseEntity<byte[]>(bytes, headers, HttpStatus.OK);
-//    }
+    // Object Storage 파일 다운로드(trouble shooting : java.lang.OutOfMemoryError: Required array length 2147483639 + 9 is too large)
+    public ResponseEntity<byte[]> downloadFile(Long fileNo) {
+        byte[] bytes = null;
+        HttpHeaders headers = null;
+        try {
+            UserFile file = fileRepository.findById(fileNo).orElseThrow();
+            S3Object s3Object = amazonS3.getObject(new GetObjectRequest(bucketName, file.getFileName()));
+            S3ObjectInputStream inputStream = s3Object.getObjectContent();
+            bytes = IOUtils.toByteArray(inputStream);
+
+            headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDisposition(ContentDisposition.builder("attachment")
+                    .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return new ResponseEntity<byte[]>(bytes, headers, HttpStatus.OK);
+    }
 
     public ResponseEntity<Resource> download2(Long fileNo) throws IOException, InterruptedException {
         Resource resource = null;
@@ -193,18 +197,18 @@ public class MyboxService {
         File file = new File(userFile.getFileOriginName());
         Path path = Paths.get(file.getPath());
         try {
-            Download downloadDirectory = transferManager.download(bucketName, userFile.getFileName(), file);
+            Download download = transferManager.download(bucketName, userFile.getFileName(), file);
 
             // 다운로드 상태 확인
             log.info("[" + userFile.getFileOriginName() + "] download progressing... start");
             DecimalFormat decimalFormat = new DecimalFormat("##0.00");
-            while (!downloadDirectory.isDone()) {
+            while (!download.isDone()) {
                 Thread.sleep(1000);
-                TransferProgress progress = downloadDirectory.getProgress();
+                TransferProgress progress = download.getProgress();
                 double percentTransferred = progress.getPercentTransferred();
                 log.info("[" + userFile.getFileOriginName() + "] " + decimalFormat.format(percentTransferred) + "% download progressing...");
             }
-            log.info("[" + userFile.getFileOriginName() + "] download directory from S3 success!");
+            log.info("[" + userFile.getFileOriginName() + "] download from S3 success!");
 
             resource = new InputStreamResource(Files.newInputStream(path));
             headers = new HttpHeaders();
