@@ -116,27 +116,6 @@ public class MyboxService {
     // 폴더 다운로드
 
 
-    // 파일 다운로드
-    public ResponseEntity<Resource> fileDownload(Long fileNo) {
-        Resource resource = null;
-        HttpHeaders headers = null;
-        try {
-            UserFile file = fileRepository.findById(fileNo).orElseThrow();
-            Path path = Paths.get(file.getPath());
-            resource = new InputStreamResource(Files.newInputStream(path));
-
-            headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDisposition(ContentDisposition.builder("attachment")
-                    .filename(URLEncoder.encode(file.getFileOriginName(),"UTF-8")).build());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
-    }
-
-
     // Object Storage 파일 업로드
     @Transactional
     public UserFile uploadfile(MultipartFile file, String userId) throws IOException {
@@ -190,6 +169,7 @@ public class MyboxService {
         return new ResponseEntity<byte[]>(bytes, headers, HttpStatus.OK);
     }
 
+    // 파일 다운로드
     public ResponseEntity<Resource> download2(Long fileNo) throws IOException, InterruptedException {
         Resource resource = null;
         HttpHeaders headers = null;
